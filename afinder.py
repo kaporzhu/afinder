@@ -5,9 +5,9 @@ Afinder library
 Afinder stands for attribute finder.
 Afinder is an object attr or method find library, written in Python.
 usage:
-   >>> import afinder
-   >>> afinder.search_method(obj, 'something')
-   ['obj.attribute.something', 'obj.attribute.moha:"something is here"']
+   >>> from afinder import afind
+   >>> afind(obj, 'something')
+   ['obj.attribute.something', 'obj.attribute.moha:something is here']
 :copyright: (c) 2016 by Kapor Zhu.
 :license: Apache 2.0, see LICENSE for more details.
 """
@@ -21,59 +21,57 @@ __copyright__ = 'Copyright 2016 Kapor Zhu'
 import inspect
 import re
 
-
-BASIC_TYPES = (str, unicode, basestring, int, long, float, complex, tuple, list, set)
-
-
-def _walk_dict(dictionary, base_path=None):
-    for key, value in dictionary.iteritems():
-        path = '{}.{}'.format(base_path, key)
-        if isinstance(value, BASIC_TYPES):
-            yield path, key, value
-        elif isinstance(value, dict):
-            yield path, key, None
-            for p, k, v in _walk_dict(value, path):
-                yield p, k, v
-        else:
-            # class instance
-            yield path, key, None
-            value.__name__ = key
-            for p, k, v in _walk_object(value, path):
-                yield p, k, v
+BASIC_TYPES = (str, unicode, basestring, int, long, float, complex, set)
 
 
-def _walk_object(obj, base_path=None):
-    base_path = '{}.{}'.format(base_path, obj.__name__) if base_path else obj.__class__.__name__
-    for attr_name in dir(obj):
-        if attr_name.startswith('__'):
-            continue
-        attr_value = getattr(obj, attr_name)
-        path = '{}.{}'.format(base_path, attr_name)
-        if isinstance(attr_value, BASIC_TYPES):
-            yield path, attr_name, attr_value
-        elif isinstance(attr_value, dict):
-            yield path, attr_name, None
-            for p, k, v in _walk_dict(attr_value, path):
-                yield p, k, v
-        elif inspect.isclass(attr_value):
-            pass
-        else:
-            # class instance
-            yield path, attr_name, None
-            attr_value.__name__ = attr_name
-            for p, k, v in _walk_object(attr_value, path):
-                yield p, k, v
+def _walk(obj):
+    visited_ids = set()
+    visited_ids.add(id(obj))
+    fields = [('', name, value) for name, value in inspect.getmembers(obj)]
+    while fields:
+        next_level_fields = []
+        for path, name, value in fields:
+            if name.startswith('_') or inspect.isclass(value) or inspect.ismodule(value):
+                continue
+            path = '{}.{}'.format(path, name)
+            if isinstance(value, BASIC_TYPES):
+                yield path, name, value
+            else:
+                yield path, name, None
+                if not inspect.ismethod(value) and id(value) not in visited_ids:
+                    if isinstance(value, (list, tuple)):
+                        next_level_fields.extend([(path, str(i), v) for i, v in enumerate(value)])
+                    elif isinstance(value, dict):
+                        next_level_fields.extend([(path, str(k), v) for k, v in value.iteritems()])
+                    else:
+                        try:
+                            iter(value)
+                            # iterable
+                            next_level_fields.extend([(path, str(i), v) for i, v in enumerate(value)])
+                        except:
+                            next_level_fields.extend([(path, n, v) for n, v in inspect.getmembers(value)])
+                    visited_ids.add(id(value))
+        fields = next_level_fields
 
 
 def afind(obj, text):
     assert obj, 'obj is required'
     assert text, 'text is required'
     text = str(text)
-    text_re = re.compile(text.lower(), re.I)
+    text_re = re.compile(text.lower(), re.I | re.M)
     paths = []
-    for path, name, value in _walk_object(obj):
+    for path, name, value in _walk(obj):
         if text_re.search(name):
             paths.append(path)
-        elif value and text_re.search(str(value)):
-            paths.append('{}:"{}"'.format(path, value))
+        elif value:
+            try:
+                if isinstance(value, basestring):
+                    value = value.encode('utf-8', 'ignore')
+                else:
+                    value = str(value)
+
+                if text_re.search(value):
+                    paths.append('{}:{}'.format(path, value.replace('\n', ' ')))
+            except:
+                pass
     return paths

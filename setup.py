@@ -15,38 +15,31 @@ if sys.argv[-1] == 'publish':
     os.system('python setup.py sdist upload')
     sys.exit()
 
-packages = [
-    'afinder',
-]
 
-requires = []
+def get_version():
+    with open('afinder.py', 'r') as fd:
+        return re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', fd.read(), re.MULTILINE).group(1)
 
-version = ''
-with open('afinder.py', 'r') as fd:
-    version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
-                        fd.read(), re.MULTILINE).group(1)
 
-if not version:
-    raise RuntimeError('Cannot find version information')
-
-with open('README.rst', 'r', 'utf-8') as f:
-    readme = f.read()
+def get_long_description():
+    with open('README.rst', 'r', 'utf-8') as f:
+        return f.read()
 
 setup(
     name='afinder',
-    version=version,
+    version=get_version(),
     description='find attribute in deep object',
-    long_description=readme,
+    long_description=get_long_description(),
     author='Kapor Zhu',
     author_email='kapor.zhu@gmail.com',
     url='https://github.com/kaporzhu/afinder',
-    packages=packages,
-    package_data={'': ['LICENSE']},
-    package_dir={'afinder': '.'},
-    include_package_data=True,
-    install_requires=requires,
+    install_requires=['six'],
     license='Apache 2.0',
     zip_safe=False,
+    py_modules=['afinder'],
+    namespace_packages=[],
+    package_data={'': ['LICENSE']},
+    include_package_data=True,
     classifiers=(
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
@@ -54,5 +47,7 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.5',
     ),
 )

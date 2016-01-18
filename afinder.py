@@ -13,7 +13,7 @@ usage:
 """
 
 __title__ = 'afinder'
-__version__ = '0.0.1'
+__version__ = '0.0.3'
 __author__ = 'Kapor Zhu'
 __license__ = 'Apache 2.0'
 __copyright__ = 'Copyright 2016 Kapor Zhu'
@@ -86,5 +86,5 @@ def afind(obj, text):
                 pass
 
             if text_re.search(value):
-                paths.append('{}:{}'.format(path, value.replace('\n', ' ')))
+                paths.append(u'{}:{}'.format(path, value.replace('\n', ' ')))
     return paths

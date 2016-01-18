@@ -24,3 +24,4 @@ t2.py
 dist
 .idea
 *.egg-info
+.pypirc
